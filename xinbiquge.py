@@ -77,7 +77,17 @@ def down(url: str):
     doc = pq(r.text)
 
     # 标题
-    top = doc('div .bookname h1').text()
+    top = doc('div .bookname h1').text().split()
+
+    if len(top) > 1:
+        index = top[1].find('（')
+        if index != -1:
+            top = top[0]+' '+top[1][:index]
+        else:
+            top = ' '.join(top)
+    else:
+        top = top[0]
+
     # 内容
     text = doc('div #content').text()
 
