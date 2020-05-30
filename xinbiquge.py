@@ -1,6 +1,4 @@
-import requests
-from lxml import etree
-from pyquery import PyQuery as pq
+from requests_html import HTMLSession
 import os
 import time
 
@@ -35,24 +33,18 @@ def getNoteUrl():
 
 
 def getNoteName(url):
-    r = requests.get(url)
-    if r.status_code:
-        r.encoding = r.apparent_encoding
-
-    doc = pq(r.text)
-    return doc('div #info h1').text()
+    return HTMLSession().get(url).html.find('#info h1')[0].text
 
 
 def getPages(mainUrl, noteUrl):
-    r = requests.get(url=noteUrl)
-    if r.status_code:
-        r.encoding = r.apparent_encoding
+    Urls = []
 
-    # 获取并完善链接
-    html = etree.HTML(r.text)
-    Urls = html.xpath('/html/body/div/div[4]/div/dl/dd/a/@href')
-    for i in range(len(Urls)):
-        Urls[i] = mainUrl+Urls[i]
+    # 获取所有a节点
+    r = HTMLSession().get(noteUrl).html.find('#list a')
+
+    # 完善链接
+    for i in r:
+        Urls.append(mainUrl+''.join(i.links))
 
     return Urls
 
@@ -70,15 +62,12 @@ def mkDir(path):
 
 
 def down(url: str):
-    r = requests.get(url)
-    if r.status_code:
-        r.encoding = r.apparent_encoding
-
-    doc = pq(r.text)
+    # 获取网页
+    r = HTMLSession().get(url).html
 
     # 标题
-    top = doc('div .bookname h1').text().split()
-
+    top = r.find('.bookname h1')[0].text
+    top = top.split()
     if len(top) > 1:
         index = top[1].find('（')
         if index != -1:
@@ -88,8 +77,8 @@ def down(url: str):
     else:
         top = top[0]
 
-    # 内容
-    text = doc('div #content').text()
+    # 获取内容
+    text = r.find('#content')[0].text
 
     # 写入文件
     txtTop = saveDir+top+'.txt'
@@ -109,12 +98,12 @@ if __name__ == '__main__':
     noteUrl = getNoteUrl()
     # 获取小说名
     noteName = getNoteName(noteUrl)
+    # 获取章节页链接
+    pageUrls = getPages(siteUrl, noteUrl)
     # 设置保存目录
     saveDir = os.getcwd()+'/'+noteName+'/'
     # 创建主目录
     mkDir(saveDir)
-    # 获取章节页链接
-    pageUrls = getPages(siteUrl, noteUrl)
     # 下载
     for i in pageUrls:
         down(i)
